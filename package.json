@@ -1,0 +1,15 @@
+{
+  "name": "sol-typescript",
+  "private": true,
+  "description": "Sol's TypeScript application-runtime packages: @sol-fab/svc and @sol-fab/worker.",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

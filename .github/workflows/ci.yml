@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspaces --if-present
+      - run: npm run test --workspaces --if-present
+      - name: Dependency licence gate
+        run: npx --yes license-checker --production --onlyAllow "MIT;Apache-2.0"
