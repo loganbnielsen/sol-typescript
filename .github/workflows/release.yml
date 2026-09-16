@@ -1,0 +1,64 @@
+name: Release
+
+# Publishing is driven by a package-scoped version tag: `svc-v0.1.0` or
+# `worker-v0.1.0` (not a bare `v*`, since this repo holds two independently
+# versioned packages). Provenance is published from GitHub Actions (this
+# repo is public), so consumers can verify the artefact was built from
+# this source.
+#
+# AUTHENTICATION: OIDC trusted publishing. This repo holds **no npm
+# token** -- the workflow exchanges a GitHub Actions OIDC token for a
+# short-lived publish credential, and that same flow produces the
+# provenance statement. The trust relationship is configured per package
+# on npm, once each package exists on the registry:
+#   npm trust github @sol-fab/svc --file release.yml --allow-publish
+#   npm trust github @sol-fab/worker --file release.yml --allow-publish
+#
+# Do NOT reintroduce NODE_AUTH_TOKEN. v0.1.0 of each package needs a
+# one-time bootstrap token instead (a trusted publisher can only be
+# attached to a package that already exists on the registry) -- see the
+# sol-obs/sol-kafka repos' DEC-023 history (in the sol repo) for the exact
+# bootstrap sequence. Delete the bootstrap token from repo secrets
+# immediately after each package's first publish.
+on:
+  push:
+    tags:
+      - "svc-v*"
+      - "worker-v*"
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Package to publish (svc or worker)"
+        required: true
+        type: choice
+        options: [svc, worker]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Determine package from tag
+        id: pkg
+        run: |
+          if [ -n "${{ inputs.package }}" ]; then
+            echo "name=${{ inputs.package }}" >> "$GITHUB_OUTPUT"
+          else
+            ref="${GITHUB_REF#refs/tags/}"
+            echo "name=${ref%%-v*}" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v4
+        with:
+          # Node 24 ships npm 11.x. OIDC trusted publishing requires npm
+          # >= 11.5.1; every Node 22 release ships npm 10.9.8.
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspace=packages/${{ steps.pkg.outputs.name }}
+      - run: npm run test --workspace=packages/${{ steps.pkg.outputs.name }}
+      - run: npm publish --access public --provenance --workspace=packages/${{ steps.pkg.outputs.name }}
