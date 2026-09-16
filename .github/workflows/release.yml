@@ -14,12 +14,16 @@ name: Release
 #   npm trust github @sol-fab/svc --file release.yml --allow-publish
 #   npm trust github @sol-fab/worker --file release.yml --allow-publish
 #
-# Do NOT reintroduce NODE_AUTH_TOKEN. v0.1.0 of each package needs a
-# one-time bootstrap token instead (a trusted publisher can only be
-# attached to a package that already exists on the registry) -- see the
-# sol-obs/sol-kafka repos' DEC-023 history (in the sol repo) for the exact
-# bootstrap sequence. Delete the bootstrap token from repo secrets
-# immediately after each package's first publish.
+# BOOTSTRAP IN PROGRESS: the `env: NODE_AUTH_TOKEN` line below and the
+# NPM_TOKEN repo secret are temporary -- a trusted publisher can only be
+# attached to a package that already exists on the registry, so v0.1.0 of
+# each package needs a one-time bootstrap token instead. Remove the
+# `env:` block and delete the NPM_TOKEN secret immediately after both
+# packages' first publish, then run `npm trust github` for each (see the
+# sol-obs/sol-kafka repos' DEC-023 history, in the sol repo, for the
+# exact sequence this mirrors). An NPM_TOKEN and a trust configuration
+# conflict, so leaving this in place after the flip is not just untidy --
+# it actively breaks OIDC publishing.
 on:
   push:
     tags:
@@ -62,3 +66,5 @@ jobs:
       - run: npm run build --workspace=packages/${{ steps.pkg.outputs.name }}
       - run: npm run test --workspace=packages/${{ steps.pkg.outputs.name }}
       - run: npm publish --access public --provenance --workspace=packages/${{ steps.pkg.outputs.name }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
