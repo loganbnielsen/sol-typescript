@@ -1,0 +1,46 @@
+{
+  "name": "@sol-fab/worker",
+  "version": "0.1.0",
+  "description": "Sol's worker-lifecycle contract for TypeScript Kafka workers -- idempotent SIGTERM/SIGINT, an unbounded drain (matching sol-worker having no drain_timeout_s), and ordered shutdown hooks. Not a Kafka client wrapper; consuming and retry/DLQ stay kafkajs and @sol-fab/kafka.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/loganbnielsen/sol-typescript.git",
+    "directory": "packages/worker"
+  },
+  "keywords": [
+    "sol",
+    "graceful-shutdown",
+    "sigterm",
+    "kafka"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "test": "node --import tsx --test test/*.test.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}
