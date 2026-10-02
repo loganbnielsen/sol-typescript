@@ -1,9 +1,53 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { runService, DEFAULT_DRAIN_TIMEOUT_MS } from "../src/index.js";
+import { runService, DEFAULT_DRAIN_TIMEOUT_MS, DEFAULT_SHUTDOWN_DELAY_MS } from "../src/index.js";
 
 test("default drain timeout matches sol-svc's drain_timeout_s (30s)", () => {
   assert.equal(DEFAULT_DRAIN_TIMEOUT_MS, 30_000);
+});
+
+test("default shutdown delay matches sol-svc's shutdown_delay_s (5s)", () => {
+  assert.equal(DEFAULT_SHUTDOWN_DELAY_MS, 5_000);
+});
+
+test("isReady() flips false immediately on shutdown, before the drain starts", async () => {
+  let drainRan = false;
+  const lifecycle = runService({
+    drain: async () => {
+      drainRan = true;
+    },
+    shutdownDelayMs: 50,
+    exit: () => {},
+  });
+  try {
+    assert.equal(lifecycle.isReady(), true);
+    const shutting = lifecycle.shutdown();
+    assert.equal(lifecycle.isReady(), false, "readiness must flip synchronously with shutdown");
+    assert.equal(drainRan, false, "the drain must not start before the shutdown delay elapses");
+    await shutting;
+    assert.equal(drainRan, true);
+    assert.equal(lifecycle.isReady(), false, "readiness must stay off once shutdown began");
+  } finally {
+    lifecycle.dispose();
+  }
+});
+
+test("shutdownDelayMs: 0 starts the drain without waiting", async () => {
+  let drainRan = false;
+  const lifecycle = runService({
+    drain: async () => {
+      drainRan = true;
+    },
+    shutdownDelayMs: 0,
+    exit: () => {},
+  });
+  try {
+    await lifecycle.shutdown();
+    assert.equal(drainRan, true);
+    assert.equal(lifecycle.isReady(), false);
+  } finally {
+    lifecycle.dispose();
+  }
 });
 
 test("shutdown is idempotent -- concurrent calls drain exactly once", async () => {
@@ -13,6 +57,7 @@ test("shutdown is idempotent -- concurrent calls drain exactly once", async () =
     drain: async () => {
       drainCalls++;
     },
+    shutdownDelayMs: 0,
     exit: (code) => {
       exitCode = code;
     },
@@ -32,6 +77,7 @@ test("a drain that never resolves is force-cancelled at the timeout, not hung fo
   const lifecycle = runService({
     drain: () => new Promise(() => {}), // never resolves
     drainTimeoutMs: 20,
+    shutdownDelayMs: 0,
     shutdownHooks: [
       async () => {
         hookRan = true;
@@ -56,6 +102,7 @@ test("shutdown hooks run in order after the drain settles", async () => {
     drain: async () => {
       order.push("drain");
     },
+    shutdownDelayMs: 0,
     shutdownHooks: [
       async () => {
         order.push("producer");
@@ -78,6 +125,7 @@ test("onDrainStart fires exactly once, even if SIGTERM and SIGINT both arrive", 
   let calls = 0;
   const lifecycle = runService({
     drain: async () => {},
+    shutdownDelayMs: 0,
     onDrainStart: () => {
       calls++;
     },
@@ -111,6 +159,7 @@ test("the drain timeout timer is cleared (not left running) when drain wins the 
     const lifecycle = runService({
       drain: async () => {}, // resolves immediately -- drain wins, not the timeout
       drainTimeoutMs: 5_000,
+      shutdownDelayMs: 0,
       exit: () => {},
     });
     try {
@@ -134,6 +183,7 @@ test("a drain() that throws reports via onError, exits 1, and shutdown() rejects
     drain: async () => {
       throw boom;
     },
+    shutdownDelayMs: 0,
     onError: (err) => {
       reportedErr = err;
     },
@@ -155,6 +205,7 @@ test("a shutdown hook that throws reports via onError and exits 1", async () => 
   const boom = new Error("hook boom");
   const lifecycle = runService({
     drain: async () => {},
+    shutdownDelayMs: 0,
     shutdownHooks: [
       async () => {
         throw boom;
@@ -186,6 +237,7 @@ test("a rejected drain() still clears the drain-timeout timer (regression: was l
         throw new Error("boom");
       },
       drainTimeoutMs: 30_000,
+      shutdownDelayMs: 0,
       onError: () => {},
       exit: () => {},
     });
@@ -206,6 +258,7 @@ test("a signal-triggered failure does not produce an unhandled rejection", async
     drain: async () => {
       throw boom;
     },
+    shutdownDelayMs: 0,
     onError: () => {},
     exit: () => {},
   });
