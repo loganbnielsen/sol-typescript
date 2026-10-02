@@ -1,37 +1,37 @@
 name: Release
 
-# Publishing is driven by a package-scoped version tag: `svc-v0.1.0` or
-# `worker-v0.1.0` (not a bare `v*`, since this repo holds two independently
-# versioned packages). Provenance is published from GitHub Actions (this
-# repo is public), so consumers can verify the artefact was built from
+# Publishing is driven by a package-scoped version tag: `svc-v0.1.0`,
+# `worker-v0.1.0` or `jobs-v0.1.0` (not a bare `v*`, since this repo holds
+# independently versioned packages). Provenance is published from GitHub Actions
+# (this repo is public), so consumers can verify the artefact was built from
 # this source.
 #
-# AUTHENTICATION: OIDC trusted publishing. This repo holds **no npm
-# token** -- the workflow exchanges a GitHub Actions OIDC token for a
-# short-lived publish credential, and that same flow produces the
-# provenance statement. The trust relationship is configured per package
-# on npm, once each package exists on the registry:
-#   npm trust github @sol-fab/svc --file release.yml --allow-publish
+# AUTHENTICATION: OIDC trusted publishing. This repo holds **no npm token** --
+# the workflow exchanges a GitHub Actions OIDC token for a short-lived publish
+# credential, and that same flow produces the provenance statement. The trust
+# relationship is configured per package on npm:
+#   npm trust github @sol-fab/svc    --file release.yml --allow-publish
 #   npm trust github @sol-fab/worker --file release.yml --allow-publish
+#   npm trust github @sol-fab/jobs   --file release.yml --allow-publish
 #
-# Do NOT reintroduce NODE_AUTH_TOKEN. v0.1.0 of each package was
-# bootstrapped with a temporary token (removed here; see git history on
-# this file, and the sol-obs/sol-kafka repos' DEC-023 history in the sol
-# repo, for the exact sequence). The next step is `npm trust github` for
-# each package -- an interactive, 2FA-gated action that can't run from
-# CI -- after which every publish goes through pure OIDC.
+# `@sol-fab/svc` and `@sol-fab/worker` are configured. npm rejects `npm trust`
+# for a package that does not exist yet (`404 Package not found`), so a brand
+# new package is bootstrapped with one authenticated `npm publish` and its
+# trust is configured immediately afterwards; every release from then on is
+# pure OIDC. Do NOT reintroduce NODE_AUTH_TOKEN.
 on:
   push:
     tags:
       - "svc-v*"
       - "worker-v*"
+      - "jobs-v*"
   workflow_dispatch:
     inputs:
       package:
-        description: "Package to publish (svc or worker)"
+        description: "Package to publish (svc, worker or jobs)"
         required: true
         type: choice
-        options: [svc, worker]
+        options: [svc, worker, jobs]
 
 permissions:
   contents: read

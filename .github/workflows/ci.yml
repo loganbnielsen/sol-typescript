@@ -8,6 +8,24 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # @sol-fab/jobs' queue behaviour (FOR UPDATE SKIP LOCKED, lease expiry,
+    # backoff, terminal rows, the transactional enqueue) cannot be observed
+    # without a real Postgres, so the job runs one and passes POSTGRES_URL. The
+    # Postgres-backed cases self-skip for a developer who has no local server.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_URL: postgres://postgres:postgres@localhost:5432/postgres
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
