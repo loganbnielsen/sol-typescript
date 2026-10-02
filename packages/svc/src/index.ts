@@ -4,11 +4,21 @@
 // whose sol-worker counterpart (worker.mli) has no such parameter at all.
 export const DEFAULT_DRAIN_TIMEOUT_MS = 30_000;
 
+// Matches framework/sol-svc/lib/service.mli's `?shutdown_delay_s` default (5.0):
+// the listener keeps serving for this long after readiness turns off, so an
+// orchestrator's readiness probe observes the flip before the socket closes.
+export const DEFAULT_SHUTDOWN_DELAY_MS = 5_000;
+
 export interface RunServiceOptions {
   /** Stop accepting new requests and let in-flight ones finish, e.g. `() => app.close()`. */
   drain: () => Promise<void>;
   /** Default 30_000, matching sol-svc's `drain_timeout_s`. */
   drainTimeoutMs?: number;
+  /**
+   * Time between readiness turning off and the drain starting. Default 5_000,
+   * matching sol-svc's `shutdown_delay_s`; a probe interval must fit inside it.
+   */
+  shutdownDelayMs?: number;
   /** Run in order once the drain settles, e.g. producer/tracing teardown. */
   shutdownHooks?: Array<() => Promise<void>>;
   /** Defaults to `process.exit`; overridable so tests don't kill the process. */
@@ -33,6 +43,12 @@ export interface ServiceLifecycle {
   shutdown: () => Promise<void>;
   /** Remove the installed SIGTERM/SIGINT listeners (for tests). */
   dispose: () => void;
+  /**
+   * False from the instant shutdown begins, so a `/readyz` route returns 503
+   * while the listener still serves -- matching service.ml's
+   * `~ready:(fun () -> Atomic.get ready)` and its 503 body.
+   */
+  isReady: () => boolean;
 }
 
 /**
@@ -43,10 +59,12 @@ export interface ServiceLifecycle {
  */
 export function runService(opts: RunServiceOptions): ServiceLifecycle {
   const drainTimeoutMs = opts.drainTimeoutMs ?? DEFAULT_DRAIN_TIMEOUT_MS;
+  const shutdownDelayMs = opts.shutdownDelayMs ?? DEFAULT_SHUTDOWN_DELAY_MS;
   const exit = opts.exit ?? ((code: number) => process.exit(code));
   const hooks = opts.shutdownHooks ?? [];
 
   let shuttingDown = false;
+  let ready = true;
   let resolveDone: (() => void) | undefined;
   let rejectDone: ((err: unknown) => void) | undefined;
   const done = new Promise<void>((resolve, reject) => {
@@ -60,7 +78,15 @@ export function runService(opts: RunServiceOptions): ServiceLifecycle {
   const shutdown = async (): Promise<void> => {
     if (shuttingDown) return done;
     shuttingDown = true;
+    // service.ml flips `ready` before the delay and the delay before the
+    // listener stops, so a readiness probe sees 503 while requests still
+    // succeed. `onDrainStart` runs after the flip so its own observation of
+    // isReady() is already false.
+    ready = false;
     opts.onDrainStart?.();
+    if (shutdownDelayMs > 0) {
+      await new Promise<void>((resolve) => setTimeout(resolve, shutdownDelayMs));
+    }
 
     let timer: NodeJS.Timeout;
     const timeout = new Promise<void>((resolve) => {
@@ -103,6 +129,7 @@ export function runService(opts: RunServiceOptions): ServiceLifecycle {
 
   return {
     shutdown,
+    isReady: () => ready,
     dispose: () => {
       process.off("SIGTERM", onSigterm);
       process.off("SIGINT", onSigint);

@@ -19,7 +19,13 @@ because their OCaml counterparts do: `sol-svc`'s `service.mli` exposes a
 `drain_timeout_s` (an HTTP client can hold a connection open indefinitely);
 `sol-worker`'s `worker.mli` has no equivalent parameter at all (a worker's
 forced-shutdown safety is Kafka redelivery plus the orchestrator's grace
-period, not a package-level timeout). See each package's README for details.
+period, not a package-level timeout).
+
+`@sol-fab/svc` also mirrors `sol-svc`'s readiness: `runService` returns
+`isReady()`, false from the instant shutdown begins, so the app's `/readyz`
+route returns 503 while the listener still serves. The listener keeps serving
+for `shutdownDelayMs` (default 5s, `sol-svc`'s `shutdown_delay_s`) before the
+drain starts, so a readiness probe observes the flip before the socket closes.
 
 No `@sol-fab/fn` package exists yet -- `sol-fn`'s OCaml contract (run once,
 return, `SIGTERM` before the next invocation) has no measured TypeScript gap
@@ -27,9 +33,9 @@ to justify one; see the `sol` repo's `FEAT-036` ticket.
 
 ## Status
 
-Not yet published to npm. See the `sol` repo's `pipeline/tickets/` for
-sequencing (`FEAT-036` decided the API boundary; publish + wiring the
-`examples/pluto` demo through it is tracked as a follow-up).
+Published to npm as `@sol-fab/svc` and `@sol-fab/worker`; a tag (`svc-v*`,
+`worker-v*`) publishes through the OIDC release workflow. See the `sol` repo's
+`pipeline/tickets/` for sequencing.
 
 ## Development
 
