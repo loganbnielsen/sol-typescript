@@ -1,10 +1,10 @@
 name: Release
 
 # Publishing is driven by a package-scoped version tag: `svc-v0.1.0`,
-# `worker-v0.1.0` or `jobs-v0.1.0` (not a bare `v*`, since this repo holds
-# independently versioned packages). Provenance is published from GitHub Actions
-# (this repo is public), so consumers can verify the artefact was built from
-# this source.
+# `worker-v0.1.0`, `jobs-v0.1.0` or `outbox-v0.1.0` (not a bare `v*`, since this
+# repo holds independently versioned packages). Provenance is published from
+# GitHub Actions (this repo is public), so consumers can verify the artefact was
+# built from this source.
 #
 # AUTHENTICATION: OIDC trusted publishing. This repo holds **no npm token** --
 # the workflow exchanges a GitHub Actions OIDC token for a short-lived publish
@@ -13,25 +13,27 @@ name: Release
 #   npm trust github @sol-fab/svc    --file release.yml --allow-publish
 #   npm trust github @sol-fab/worker --file release.yml --allow-publish
 #   npm trust github @sol-fab/jobs   --file release.yml --allow-publish
+#   npm trust github @sol-fab/outbox --file release.yml --allow-publish
 #
-# `@sol-fab/svc` and `@sol-fab/worker` are configured. npm rejects `npm trust`
-# for a package that does not exist yet (`404 Package not found`), so a brand
-# new package is bootstrapped with one authenticated `npm publish` and its
-# trust is configured immediately afterwards; every release from then on is
-# pure OIDC. Do NOT reintroduce NODE_AUTH_TOKEN.
+# `@sol-fab/svc`, `@sol-fab/worker` and `@sol-fab/jobs` are configured. npm
+# rejects `npm trust` for a package that does not exist yet (`404 Package not
+# found`), so a brand new package is bootstrapped with one authenticated
+# `npm publish` and its trust is configured immediately afterwards; every
+# release from then on is pure OIDC. Do NOT reintroduce NODE_AUTH_TOKEN.
 on:
   push:
     tags:
       - "svc-v*"
       - "worker-v*"
       - "jobs-v*"
+      - "outbox-v*"
   workflow_dispatch:
     inputs:
       package:
-        description: "Package to publish (svc, worker or jobs)"
+        description: "Package to publish (svc, worker, jobs or outbox)"
         required: true
         type: choice
-        options: [svc, worker, jobs]
+        options: [svc, worker, jobs, outbox]
 
 permissions:
   contents: read

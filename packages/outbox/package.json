@@ -1,0 +1,51 @@
+{
+  "name": "@sol-fab/outbox",
+  "version": "0.1.0",
+  "description": "Sol's Postgres transactional outbox for TypeScript -- commit a domain change and its publication intent in one transaction, then publish per key in order, mirroring sol-outbox. A library, not a primitive: host its relay from an ordinary @sol-fab/worker binary.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/loganbnielsen/sol-typescript.git",
+    "directory": "packages/outbox"
+  },
+  "keywords": [
+    "sol",
+    "outbox",
+    "postgres",
+    "kafka",
+    "transactional"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "test": "node --import tsx --test test/*.test.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}
