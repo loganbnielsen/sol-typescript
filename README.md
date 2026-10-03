@@ -9,6 +9,10 @@ Source repository for Sol's TypeScript application-runtime packages:
 - **`packages/jobs`** → `@sol-fab/jobs` — Sol's durable Postgres job queue: a
   transactional, dedupe-keyed `enqueue` and a leased `runJobs` runner, mirroring
   `framework/sol-jobs`.
+- **`packages/outbox`** → `@sol-fab/outbox` — Sol's Postgres transactional
+  outbox: a `publish` that joins the caller's transaction and a `runRelay` that
+  publishes each key's events in order, deleting a row only after the broker
+  acknowledged it. Mirrors `framework/sol-outbox`.
 
 Each lifecycle package owns exactly what its OCaml counterpart
 (`framework/sol-svc`/`framework/sol-worker` in the `sol` repo) owns for
@@ -41,12 +45,13 @@ to justify one; see the `sol` repo's `FEAT-036` ticket.
 
 ## Status
 
-Published to npm as `@sol-fab/svc`, `@sol-fab/worker` and `@sol-fab/jobs`; a tag
-(`svc-v*`, `worker-v*`, `jobs-v*`) publishes through the OIDC release workflow.
-See the `sol` repo's `pipeline/tickets/` for sequencing.
+Published to npm as `@sol-fab/svc`, `@sol-fab/worker`, `@sol-fab/jobs` and
+`@sol-fab/outbox`; a tag (`svc-v*`, `worker-v*`, `jobs-v*`, `outbox-v*`)
+publishes through the OIDC release workflow. See the `sol` repo's
+`pipeline/tickets/` for sequencing.
 
-The `@sol-fab/jobs` behaviour tests need a Postgres: CI runs one and sets
-`POSTGRES_URL`, and without it those cases self-skip.
+The `@sol-fab/jobs` and `@sol-fab/outbox` behaviour tests need a Postgres: CI
+runs one and sets `POSTGRES_URL`, and without it those cases self-skip.
 
 ## Development
 
