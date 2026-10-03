@@ -239,3 +239,46 @@ withDb("an unreadable table is a database error naming the migration, not a cras
     await pool.end();
   }
 });
+
+// BUG-125: the renewal heartbeat used to leave a `leaseS / 3` timer pending
+// after the handler finished, holding the Node event loop open (with the default
+// lease that is a 100-second linger after the last job completes). `sleep` now
+// takes the renewal's abort signal, and the handler aborts it in a `finally`.
+// `leaseS: 3` makes the renewal sleep `1` second, distinct from the `0.05`
+// poll interval, so the injected sleep can tell the two apart.
+withDb("the lease-renewal sleep is aborted when the handler finishes", async () => {
+  await withFreshTable(async (pool) => {
+    await enqueue(pool as unknown as Queryable, contract, { user: "a" });
+    const controller = new AbortController();
+    let renewalSignal: AbortSignal | undefined;
+    let renewalSleepWithoutSignal = false;
+    const sleep = (seconds: number, signal?: AbortSignal): Promise<void> => {
+      if (Math.abs(seconds - 1) >= 1e-9) return Promise.resolve();
+      if (signal === undefined) {
+        renewalSleepWithoutSignal = true;
+        return Promise.resolve();
+      }
+      renewalSignal = signal;
+      return new Promise<void>((resolve) => {
+        if (signal.aborted) {
+          resolve();
+          return;
+        }
+        signal.addEventListener("abort", () => resolve(), { once: true });
+      });
+    };
+    const error = await runJobs<Email>({
+      pool,
+      contract: { ...contract, handle: async () => {} },
+      pollIntervalS: 0.05,
+      leaseS: 3,
+      sleep,
+      onOutcome: () => controller.abort(),
+      signal: controller.signal,
+    });
+    assert.equal(error, undefined);
+    assert.equal(renewalSleepWithoutSignal, false, "the renewal sleep must receive an abort signal");
+    assert.ok(renewalSignal, "the renewal sleep must run");
+    assert.equal(renewalSignal.aborted, true, "the renewal sleep must be aborted once the handler finishes");
+  });
+});

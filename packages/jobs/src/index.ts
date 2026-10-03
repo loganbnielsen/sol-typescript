@@ -228,7 +228,7 @@ export interface RunJobsOptions<T> {
   readonly onOutcome?: (outcome: JobOutcome) => void;
   /** Lease-lost and query-failure warnings; defaults to `console.warn`. */
   readonly onWarning?: (fields: Readonly<Record<string, string>>, message: string) => void;
-  readonly sleep?: (seconds: number) => Promise<void>;
+  readonly sleep?: (seconds: number, signal?: AbortSignal) => Promise<void>;
   readonly now?: () => number;
   readonly rng?: () => number;
 }
@@ -291,9 +291,21 @@ const SWEEP_SQL = `DELETE FROM ${JOBS_TABLE}
   WHERE status <> 'pending' AND workspace = $1 AND finished_at IS NOT NULL
     AND finished_at < now() - ($2::float8 * interval '1 second')`;
 
-const defaultSleep = (seconds: number): Promise<void> =>
+const defaultSleep = (seconds: number, signal?: AbortSignal): Promise<void> =>
   new Promise((resolve) => {
-    setTimeout(resolve, Math.max(0, seconds) * 1000);
+    if (signal?.aborted) {
+      resolve();
+      return;
+    }
+    const timer = setTimeout(resolve, Math.max(0, seconds) * 1000);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      { once: true },
+    );
   });
 
 /**
@@ -361,9 +373,10 @@ export async function runJobs<T>(options: RunJobsOptions<T>): Promise<RunError |
 
   const runHandler = async (row: ClaimedRow): Promise<{ ok: true } | { ok: false; message: string }> => {
     let renewing = true;
+    const renewalStop = new AbortController();
     const renewal = (async () => {
       while (renewing) {
-        await sleep(leaseS / 3);
+        await sleep(leaseS / 3, renewalStop.signal);
         if (!renewing) return;
         try {
           const result = (await pool.query(RENEW_SQL, [leaseS, row.id, row.attempts, contract.workspace])) as {
@@ -396,6 +409,7 @@ export async function runJobs<T>(options: RunJobsOptions<T>): Promise<RunError |
       }
     } finally {
       renewing = false;
+      renewalStop.abort();
       void renewal.catch(() => {});
     }
   };
