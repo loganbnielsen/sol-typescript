@@ -1,6 +1,6 @@
 {
   "name": "@sol-fab/jobs",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Sol's durable Postgres job queue for TypeScript workers -- a transactional, dedupe-keyed enqueue and a leased runner, mirroring sol-jobs. A library, not a primitive: host it from an ordinary @sol-fab/worker binary.",
   "license": "Apache-2.0",
   "type": "module",
