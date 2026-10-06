@@ -17,24 +17,16 @@
  * `@sol-fab/kafka`.
  */
 import type { Pool } from "pg";
+import {
+  DEFAULT_RETRY_POLICY,
+  backoffS,
+  validateRetryPolicy,
+  type RetryPolicy,
+} from "@sol-fab/retry";
 
-export interface RetryPolicy {
-  /** Initial backoff in seconds; doubles on each consecutive failure. */
-  readonly baseDelayS: number;
-  /** Backoff cap, even after jitter. */
-  readonly maxDelayS: number;
-  /** Maximum handler invocations. Negative = retry indefinitely. */
-  readonly maxAttempts: number;
-  /** Symmetric jitter as a fraction of the raw delay (0.1 = +-10%). 0 disables it. */
-  readonly jitterRatio: number;
-}
-
-export const DEFAULT_RETRY_POLICY: RetryPolicy = {
-  baseDelayS: 1.0,
-  maxDelayS: 600.0,
-  maxAttempts: 5,
-  jitterRatio: 0.1,
-};
+// @sol-fab/retry owns the operation-level retry vocabulary. Re-export it so
+// existing @sol-fab/jobs callers keep one import path for the same definition.
+export { DEFAULT_RETRY_POLICY, backoffS, validateRetryPolicy, type RetryPolicy };
 
 export const DEFAULT_POLL_INTERVAL_S = 1.0;
 export const DEFAULT_LEASE_S = 300.0;
@@ -97,26 +89,6 @@ function isWorkspaceChar(c: string): boolean {
   return /[a-zA-Z0-9_.-]/.test(c);
 }
 
-export function validateRetryPolicy(policy: RetryPolicy): RunError | undefined {
-  const nonNegativeFinite = (name: string, value: number): RunError | undefined =>
-    Number.isFinite(value) && value >= 0
-      ? undefined
-      : { kind: "config", message: `retryPolicy.${name} must be a finite number >= 0 (got ${value})` };
-  if (policy.maxAttempts === 0) {
-    return { kind: "config", message: "retryPolicy.maxAttempts must be nonzero (negative = unlimited)" };
-  }
-  return (
-    nonNegativeFinite("baseDelayS", policy.baseDelayS) ??
-    nonNegativeFinite("maxDelayS", policy.maxDelayS) ??
-    (Number.isFinite(policy.jitterRatio) && policy.jitterRatio >= 0 && policy.jitterRatio <= 1
-      ? undefined
-      : {
-          kind: "config",
-          message: `retryPolicy.jitterRatio must be a finite number within [0, 1] (got ${policy.jitterRatio})`,
-        })
-  );
-}
-
 export function validateTiming(pollIntervalS: number, leaseS: number): RunError | undefined {
   const positiveFinite = (name: string, value: number): RunError | undefined =>
     Number.isFinite(value) && value > 0
@@ -162,19 +134,6 @@ export function validateRetention(terminalRetentionS: number, sweepIntervalS: nu
       ? undefined
       : { kind: "config", message: `${name} must be a finite number >= 0 (got ${value})` };
   return nonNegative("terminalRetentionS", terminalRetentionS) ?? nonNegative("sweepIntervalS", sweepIntervalS);
-}
-
-/**
- * `sol_jobs.ml`'s `backoff_s`: exponential from `attempt`, symmetric jitter
- * applied *before* the `maxDelayS` clamp, and no RNG consultation at all when
- * `jitterRatio` is 0.
- */
-export function backoffS(policy: RetryPolicy, attempt: number, rng: () => number = Math.random): number {
-  const raw = policy.baseDelayS * 2 ** (attempt - 1);
-  if (policy.jitterRatio <= 0) return Math.min(policy.maxDelayS, Math.max(0, raw));
-  const jitterUnit = rng() * (2 * policy.jitterRatio);
-  const jittered = raw * (1 + (jitterUnit - policy.jitterRatio));
-  return Math.min(policy.maxDelayS, Math.max(0, jittered));
 }
 
 /**
