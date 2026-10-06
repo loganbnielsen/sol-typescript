@@ -1,7 +1,7 @@
 {
   "name": "@sol-fab/svc",
-  "version": "0.2.0",
-  "description": "Sol's service-lifecycle contract for TypeScript HTTP services -- idempotent SIGTERM/SIGINT, a bounded drain (matching sol-svc's drain_timeout_s), and ordered shutdown hooks. Not a routing framework; wraps Fastify/Express, doesn't replace them.",
+  "version": "0.3.0",
+  "description": "Sol's TypeScript HTTP service lifecycle, outbound peer-authentication helpers, and DEC-063 workload-identity verification for callees -- not a routing framework; wraps Fastify/Express, doesn't replace them.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "dist/index.js",
