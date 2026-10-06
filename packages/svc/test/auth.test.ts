@@ -94,6 +94,17 @@ test("missing or invalid token, issuer, audience, and expiry fail authentication
   );
 });
 
+test("a tampered signature is unauthorized", async () => {
+  const signed = await token("system:serviceaccount:sol:checkout");
+  const parts = signed.split(".");
+  assert.equal(parts.length, 3);
+  const signature = parts[2]!;
+  const changed = (signature[0] === "A" ? "B" : "A") + signature.slice(1);
+  parts[2] = changed;
+  const result = await authenticateWorkload(parts.join("."), options);
+  assert.equal("status" in result ? result.status : undefined, 401);
+});
+
 test("authenticated non-workload and undeclared callers are forbidden", async () => {
   assert.equal((await authenticateWorkload(`Bearer ${await token("user:alice")}`, options)).status, 403);
   assert.equal(
