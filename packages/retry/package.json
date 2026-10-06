@@ -1,7 +1,7 @@
 {
-  "name": "@sol-fab/jobs",
-  "version": "0.1.1",
-  "description": "Sol's durable Postgres job queue for TypeScript workers -- a transactional, dedupe-keyed enqueue and a leased runner, mirroring sol-jobs. A library, not a primitive: host it from an ordinary @sol-fab/worker binary.",
+  "name": "@sol-fab/retry",
+  "version": "0.1.0",
+  "description": "Sol's bounded, jittered operation-retry helper for TypeScript -- one shared policy vocabulary with @sol-fab/jobs and the OCaml sol-retry; retries a dependency call in place, never a message or a handler.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "dist/index.js",
@@ -18,13 +18,13 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/loganbnielsen/sol-typescript.git",
-    "directory": "packages/jobs"
+    "directory": "packages/retry"
   },
   "keywords": [
     "sol",
-    "jobs",
-    "postgres",
-    "queue"
+    "retry",
+    "backoff",
+    "resilience"
   ],
   "engines": {
     "node": ">=20"
@@ -33,18 +33,13 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc",
     "prepare": "npm run build",
     "test": "node --import tsx --test test/*.test.ts",
     "prepublishOnly": "npm run build"
   },
-  "dependencies": {
-    "@sol-fab/retry": "^0.1.0",
-    "pg": "^8.13.1"
-  },
   "devDependencies": {
     "@types/node": "^22.9.0",
-    "@types/pg": "^8.11.10",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3"
   }

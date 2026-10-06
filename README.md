@@ -13,6 +13,11 @@ Source repository for Sol's TypeScript application-runtime packages:
   outbox: a `publish` that joins the caller's transaction and a `runRelay` that
   publishes each key's events in order, deleting a row only after the broker
   acknowledged it. Mirrors `framework/sol-outbox`.
+- **`packages/retry`** → `@sol-fab/retry` — Sol's operation-level retry helper:
+  one bounded, jittered policy vocabulary (`baseDelayS`, `maxDelayS`,
+  `maxAttempts`, `jitterRatio`) that retries a dependency call in place, never a
+  message or a handler. Mirrors `framework/sol-retry`; `@sol-fab/jobs` consumes
+  the same vocabulary rather than keeping its own copy.
 
 Each lifecycle package owns exactly what its OCaml counterpart
 (`framework/sol-svc`/`framework/sol-worker` in the `sol` repo) owns for
@@ -45,10 +50,11 @@ to justify one; see the `sol` repo's `FEAT-036` ticket.
 
 ## Status
 
-Published to npm as `@sol-fab/svc`, `@sol-fab/worker`, `@sol-fab/jobs` and
-`@sol-fab/outbox`; a tag (`svc-v*`, `worker-v*`, `jobs-v*`, `outbox-v*`)
-publishes through the OIDC release workflow. See the `sol` repo's
-`pipeline/tickets/` for sequencing.
+Published to npm as `@sol-fab/svc`, `@sol-fab/worker`, `@sol-fab/jobs`,
+`@sol-fab/outbox` and `@sol-fab/retry`; a tag (`svc-v*`, `worker-v*`,
+`jobs-v*`, `outbox-v*`, `retry-v*`) publishes through the OIDC release
+workflow. Publish `retry` before a `jobs` release that depends on it. See the
+`sol` repo's `pipeline/tickets/` for sequencing.
 
 The `@sol-fab/jobs` and `@sol-fab/outbox` behaviour tests need a Postgres: CI
 runs one and sets `POSTGRES_URL`, and without it those cases self-skip.
