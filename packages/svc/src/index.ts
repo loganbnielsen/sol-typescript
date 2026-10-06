@@ -12,6 +12,26 @@ export const DEFAULT_SHUTDOWN_DELAY_MS = 5_000;
 export { declaredPeer, peerHeaders, peerUrl } from "./peer.js";
 export type { Peer, PeerHeadersOptions } from "./peer.js";
 
+export {
+  createWorkloadIdentityGuard,
+  parseCalledBy,
+  resetWorkloadIdentityCache,
+  verifyWorkloadIdentity,
+  WorkloadJwksCache,
+  workloadIdentityConfigFromEnv,
+} from "./workload-identity.js";
+export type {
+  VerifyWorkloadIdentityOptions,
+  WorkloadIdentity,
+  WorkloadIdentityConfig,
+  WorkloadIdentityDecision,
+  WorkloadIdentityDenialStatus,
+  WorkloadIdentityGuard,
+  WorkloadIdentityGuardOptions,
+  WorkloadIdentityRequest,
+  WorkloadIdentityResult,
+} from "./workload-identity.js";
+
 export interface RunServiceOptions {
   /** Stop accepting new requests and let in-flight ones finish, e.g. `() => app.close()`. */
   drain: () => Promise<void>;

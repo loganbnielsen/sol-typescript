@@ -41,6 +41,19 @@ application bindings. `peerHeaders` reads the projected token file for each call
 so token rotation is observed; it uses the local API-key fallback only when
 `SOL_ALLOW_PLAINTEXT_PEER_AUTH=1` is explicitly set.
 
+The callee half of the same contract (DEC-063) is
+`verifyWorkloadIdentity` / `createWorkloadIdentityGuard`. A request is
+authenticated by default and only an explicit `isPublic` exception makes it
+external. The guard verifies the projected ServiceAccount token against the
+target-projected issuer (`SOL_TRUSTED_WORKLOAD_ISSUER`, discovered through its
+OIDC document -- never the incoming token's `iss`), checks signature, audience,
+time validity and the Kubernetes ServiceAccount subject, then authorizes the
+caller unit against the caller set Sol derived from `calls` and projected as
+`SOL_CALLED_BY`. Unauthenticated callers are 401, authenticated-but-undeclared
+callers are 403, and a missing audience or trust root fails closed with a
+`SOL_UNIT`/`SOL_TRUSTED_WORKLOAD_ISSUER` error. Verification uses Node's built-in
+WebCrypto, so the package keeps no runtime dependencies.
+
 `@sol-fab/jobs` is a library, not a fourth primitive (DEC-021): an ordinary
 `@sol-fab/worker` binary hosts it by calling `runJobs` instead of consuming a
 topic. Kafka says "this happened"; the job table says "this must happen", and
