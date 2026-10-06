@@ -23,6 +23,10 @@ export interface WorkloadAuthOptions {
   readonly currentDate?: Date;
 }
 
+export type WorkloadAuthenticator = (
+  authorization: string | undefined,
+) => Promise<WorkloadPrincipal | WorkloadAuthError>;
+
 class KeyResolutionError extends Error {
   constructor(cause: unknown) {
     super("Unable to resolve workload signing key", { cause });
@@ -39,6 +43,22 @@ export function callersOfProjection(raw: string): Map<string, string> {
     if (unit && serviceAccount && !callers.has(serviceAccount)) callers.set(serviceAccount, unit);
   }
   return callers;
+}
+
+/** Build an authenticator from Sol's projected workload contract and runtime key resolver. */
+export function createWorkloadAuthenticator(resolveKey: JWTVerifyGetKey): WorkloadAuthenticator {
+  const trustedIssuer = process.env.SOL_TRUSTED_WORKLOAD_ISSUER;
+  const audience = process.env.SOL_UNIT;
+  if (!trustedIssuer || !audience) {
+    throw new Error("Sol workload authentication requires projected SOL_TRUSTED_WORKLOAD_ISSUER and SOL_UNIT");
+  }
+  const options: WorkloadAuthOptions = {
+    trustedIssuer,
+    audience,
+    callers: process.env.SOL_CALLED_BY ?? "",
+    resolveKey,
+  };
+  return (authorization) => authenticateWorkload(authorization, options);
 }
 
 /** Verify Sol workload identity and authorize its ServiceAccount against calls-derived policy. */

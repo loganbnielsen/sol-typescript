@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { generateKeyPair, SignJWT, type JWTVerifyGetKey } from "jose";
-import { authenticateWorkload, callersOfProjection } from "../src/index.js";
+import { authenticateWorkload, callersOfProjection, createWorkloadAuthenticator } from "../src/index.js";
 
 const issuer = "https://cluster.example/oidc";
 const audience = "payments/charge_svc";
@@ -40,6 +40,41 @@ test("valid workload identity returns its authorized Sol principal", async () =>
     await authenticateWorkload(`Bearer ${await token("system:serviceaccount:sol:checkout")}`, options),
     { unit: "checkout/checkout_svc", serviceAccount: "sol:checkout" },
   );
+});
+
+test("the adapter authenticator reads trusted identity only from Sol projections", async () => {
+  const previous = {
+    issuer: process.env.SOL_TRUSTED_WORKLOAD_ISSUER,
+    unit: process.env.SOL_UNIT,
+    callers: process.env.SOL_CALLED_BY,
+  };
+  process.env.SOL_TRUSTED_WORKLOAD_ISSUER = issuer;
+  process.env.SOL_UNIT = audience;
+  process.env.SOL_CALLED_BY = options.callers;
+  try {
+    const authenticate = createWorkloadAuthenticator(resolveKey);
+    assert.deepEqual(
+      await authenticate(`Bearer ${await token("system:serviceaccount:sol:checkout")}`),
+      { unit: "checkout/checkout_svc", serviceAccount: "sol:checkout" },
+    );
+  } finally {
+    if (previous.issuer === undefined) delete process.env.SOL_TRUSTED_WORKLOAD_ISSUER;
+    else process.env.SOL_TRUSTED_WORKLOAD_ISSUER = previous.issuer;
+    if (previous.unit === undefined) delete process.env.SOL_UNIT;
+    else process.env.SOL_UNIT = previous.unit;
+    if (previous.callers === undefined) delete process.env.SOL_CALLED_BY;
+    else process.env.SOL_CALLED_BY = previous.callers;
+  }
+});
+
+test("missing target identity projection fails adapter startup", () => {
+  const previous = process.env.SOL_TRUSTED_WORKLOAD_ISSUER;
+  delete process.env.SOL_TRUSTED_WORKLOAD_ISSUER;
+  try {
+    assert.throws(() => createWorkloadAuthenticator(resolveKey), /SOL_TRUSTED_WORKLOAD_ISSUER/);
+  } finally {
+    if (previous !== undefined) process.env.SOL_TRUSTED_WORKLOAD_ISSUER = previous;
+  }
 });
 
 test("missing or invalid token, issuer, audience, and expiry fail authentication", async () => {

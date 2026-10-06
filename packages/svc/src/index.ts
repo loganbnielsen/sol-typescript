@@ -9,8 +9,13 @@ export const DEFAULT_DRAIN_TIMEOUT_MS = 30_000;
 // orchestrator's readiness probe observes the flip before the socket closes.
 export const DEFAULT_SHUTDOWN_DELAY_MS = 5_000;
 
-export { authenticateWorkload, callersOfProjection } from "./auth.js";
-export type { WorkloadAuthError, WorkloadAuthOptions, WorkloadPrincipal } from "./auth.js";
+export { authenticateWorkload, callersOfProjection, createWorkloadAuthenticator } from "./auth.js";
+export type {
+  WorkloadAuthError,
+  WorkloadAuthOptions,
+  WorkloadAuthenticator,
+  WorkloadPrincipal,
+} from "./auth.js";
 
 export interface RunServiceOptions {
   /** Stop accepting new requests and let in-flight ones finish, e.g. `() => app.close()`. */
