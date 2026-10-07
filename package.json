@@ -2,6 +2,14 @@
   "name": "sol-typescript",
   "private": true,
   "description": "Sol's TypeScript application-runtime packages: @sol-fab/svc and @sol-fab/worker.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sol-fab/sol-typescript.git"
+  },
+  "homepage": "https://github.com/sol-fab/sol-typescript#readme",
+  "bugs": {
+    "url": "https://github.com/sol-fab/sol-typescript/issues"
+  },
   "workspaces": [
     "packages/*"
   ],
