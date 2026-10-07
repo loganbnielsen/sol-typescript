@@ -17,7 +17,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/loganbnielsen/sol-typescript.git",
+    "url": "git+https://github.com/sol-fab/sol-typescript.git",
     "directory": "packages/worker"
   },
   "keywords": [
